@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Family Tree Visualization</title>
+  <script src="https://d3js.org/d3.v7.min.js"></script>
+  <style>
+    /* Add your custom styles for the family tree here */
+    circle {
+      fill: #69b3a2;
+      stroke: #000;
+      stroke-width: 2;
+    }
+    line {
+      stroke: #000;
+      stroke-width: 2;
+    }
+    text {
+      font-size: 12px;
+    }
+  </style>
+</head>
+<body>
+  <button onclick="CreateRandomFamily()">Random Generate</button>
+<script src="app.js"></script>
+<script>
+  // Assuming you have already created your familyTree object
+
+  function Display(){
+    const existingSvg = document.querySelector("svg");
+  if (existingSvg) {
+    existingSvg.parentNode.removeChild(existingSvg);
+  }
+  const width = 800;
+  const height = 600;
+  let nodes = familyTree.members.map(member => ({ id: member.name, gender: member.gender }));
+  const links = [];
+
+  familyTree.members.forEach(member => {
+    member.children.forEach(child => {
+      links.push({ source: member.name, target: child.name, type: 'child' });
+    });
+
+    member.spouse.forEach(spouse => {
+      links.push({ source: member.name, target: spouse.name, type: 'spouse' });
+    });
+  });
+
+  const color = d3.scaleOrdinal(['child', 'spouse'], d3.schemeCategory10);
+
+  const simulation = d3.forceSimulation(nodes)
+      .force("link", d3.forceLink(links).id(d => d.id))
+      .force("charge", d3.forceManyBody().strength(-200))
+      .force("x", d3.forceX())
+      .force("y", d3.forceY());
+
+  const svg = d3.create("svg")
+      .attr("viewBox", [-width / 2, -height / 2, width, height])
+      .attr("width", width)
+      .attr("height", height)
+      .attr("style", "max-width: 100%; height: auto; font: 12px sans-serif;");
+  
+  // Per-type markers, as they don't inherit styles.
+  svg.append("defs").selectAll("marker")
+    .data(['child', 'spouse'])
+    .join("marker")
+      .attr("id", d => `arrow-${d}`)
+      .attr("viewBox", "0 -5 10 10")
+      .attr("refX", 15)
+      .attr("refY", -0.5)
+      .attr("markerWidth", 6)
+      .attr("markerHeight", 6)
+      .attr("orient", "auto")
+    .append("path")
+      .attr("fill", color)
+      .attr("d", "M0,-5L10,0L0,5");
+
+  const link = svg.append("g")
+      .attr("fill", "none")
+      .attr("stroke-width", 1.5)
+    .selectAll("path")
+    .data(links)
+    .join("path")
+      .attr("stroke", d => color(d.type))
+      .attr("marker-end", d => `url(${new URL(`#arrow-${d.type}`, location)})`);
+
+  const node = svg.append("g")
+      .attr("fill", "currentColor")
+      .attr("stroke-linecap", "round")
+      .attr("stroke-linejoin", "round")
+    .selectAll("g")
+    .data(nodes)
+    .join("g")
+      .call(d3.drag().subject(d => d).on("start", dragstarted).on("drag", dragged).on("end", dragended));
+
+  node.append("circle")
+      .attr("stroke", "white")
+      .attr("stroke-width", 1.5)
+      .attr("r", 10);
+
+  node.append("text")
+      .attr("x", 12)
+      .attr("y", "0.31em")
+      .text(d => d.id)
+    .clone(true).lower()
+      .attr("fill", "none")
+      .attr("stroke", "white")
+      .attr("stroke-width", 3);
+
+  simulation.on("tick", () => {
+    link.attr("d", linkArc);
+    node.attr("transform", d => `translate(${d.x},${d.y})`);
+  });
+
+  function linkArc(d) {
+    const dx = d.target.x - d.source.x;
+    const dy = d.target.y - d.source.y;
+    const dr = Math.sqrt(dx * dx + dy * dy);
+    return `M${d.source.x},${d.source.y}A${dr},${dr} 0 0,1 ${d.target.x},${d.target.y}`;
+  }
+
+  function dragstarted(event) {
+    if (!event.active) simulation.alphaTarget(0.3).restart();
+    event.subject.fx = event.subject.x;
+    event.subject.fy = event.subject.y;
+  }
+
+  function dragged(event) {
+    event.subject.fx = event.x;
+    event.subject.fy = event.y;
+  }
+
+  function dragended(event) {
+    if (!event.active) simulation.alphaTarget(0);
+    event.subject.fx = null;
+    event.subject.fy = null;
+  }
+  
+  document.body.appendChild(svg.node());
+  
+}
+
+</script>
+
+</body>
+</html>
